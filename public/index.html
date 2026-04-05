@@ -85,11 +85,11 @@ nav{position:relative;z-index:10;display:flex;align-items:center;justify-content
     Xeris<span>Vote</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <div class="wallet-pill">
+    <div class="wallet-pill" id="walletPill">
       <span style="color:var(--muted);font-size:11px;">⬡</span>
-      <input id="walletInput" placeholder="Your wallet address..."/>
+      <span id="walletDisplay" style="font-size:13px;color:var(--muted);">Not connected</span>
     </div>
-    <button class="btn" onclick="setWallet()">Connect</button>
+    <button class="btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
   </div>
 </nav>
 <div class="hero">
@@ -221,12 +221,47 @@ async function castVote(){
   }catch(e){showA('Network error. Try again.','err');}
 }
 function showA(msg,t){document.getElementById('alert').innerHTML=`<div class="a${t}">${msg}</div>`;}
+async function connectWallet(){
+  try {
+    if(window.xeris){
+      const accounts = await window.xeris.connect();
+      wallet = accounts.address || accounts[0];
+    } else {
+      // Fallback: manual entry
+      const w = prompt('Enter your Xeris wallet address:');
+      if(w) wallet = w.trim();
+    }
+    if(wallet){
+      document.getElementById('walletDisplay').textContent = wallet.slice(0,8)+'...'+wallet.slice(-4);
+      document.getElementById('walletDisplay').style.color='#00ff88';
+      document.getElementById('connectBtn').textContent = 'Connected';
+      document.getElementById('connectBtn').style.background = 'linear-gradient(135deg,#10b981,#059669)';
+    }
+  } catch(e){ alert('Connection failed: ' + e.message); }
+}
+
 function setWallet(){
-  const w=document.getElementById('walletInput').value.trim();
-  if(w){wallet=w;document.getElementById('walletInput').style.color='#00ff88';}
+  const w=document.getElementById('walletInput')?.value?.trim();
+  if(w){wallet=w;}
 }
 window.onclick=e=>{if(e.target===document.getElementById('overlay'))closeM();};
 load();setInterval(load,30000);
+
+// Auto connect if xeris wallet available
+window.addEventListener('load', async () => {
+  if(window.xeris){
+    try {
+      const accounts = await window.xeris.connect();
+      wallet = accounts.address || accounts[0];
+      if(wallet){
+        document.getElementById('walletDisplay').textContent = wallet.slice(0,8)+'...'+wallet.slice(-4);
+        document.getElementById('walletDisplay').style.color='#00ff88';
+        document.getElementById('connectBtn').textContent = 'Connected';
+        document.getElementById('connectBtn').style.background = 'linear-gradient(135deg,#10b981,#059669)';
+      }
+    } catch(e){}
+  }
+});
 </script>
 </body>
 </html>

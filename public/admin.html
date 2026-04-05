@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XerisVote Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020408;--bg2:#070d14;--bg3:#0c1520;--border:rgba(0,180,255,0.12);--blue:#00b4ff;--blue2:#0066ff;--cyan:#00e5ff;--text:#e2e8f0;--muted:#4a6080;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+nav{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:rgba(2,4,8,0.9);backdrop-filter:blur(20px);}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--blue2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.logo span{color:var(--blue);}
+.admin-badge{background:rgba(255,165,0,0.1);border:1px solid rgba(255,165,0,0.3);color:#ffa500;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.btn{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;}
+.btn:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);}
+.btn-success{background:linear-gradient(135deg,#10b981,#059669);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue);}
+.container{max-width:1100px;margin:0 auto;padding:32px 24px;position:relative;z-index:1;}
+.page-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-bottom:6px;}
+.page-sub{color:var(--muted);font-size:14px;margin-bottom:32px;}
+.tabs{display:flex;gap:4px;margin-bottom:28px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all 0.2s;margin-bottom:-1px;}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab:hover{color:var(--text);}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),transparent);border-radius:16px 16px 0 0;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-row.full{grid-template-columns:1fr;}
+.field{margin-bottom:16px;}
+.flbl{font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:0.3px;display:block;}
+.finput{width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;transition:border-color 0.2s;}
+.finput:focus{border-color:var(--blue);}
+select.finput option{background:#0d1117;}
+.ftarea{resize:vertical;min-height:80px;}
+.section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px;color:var(--blue);}
+.candidate-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:8px;align-items:center;}
+.add-btn{background:rgba(0,180,255,0.08);border:1px dashed rgba(0,180,255,0.3);color:var(--blue);padding:10px;border-radius:10px;cursor:pointer;font-size:13px;text-align:center;transition:all 0.2s;}
+.add-btn:hover{background:rgba(0,180,255,0.15);}
+.poll-row{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.poll-info{flex:1;}
+.poll-title-sm{font-weight:600;font-size:14px;margin-bottom:4px;}
+.poll-meta{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;}
+.poll-actions{display:flex;gap:8px;}
+.sbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.s-active{background:rgba(0,255,136,0.08);color:#00ff88;border:1px solid rgba(0,255,136,0.2);}
+.s-pending{background:rgba(255,165,0,0.08);color:#ffa500;border:1px solid rgba(255,165,0,0.2);}
+.s-ended{background:rgba(100,100,120,0.08);color:#64748b;border:1px solid rgba(100,100,120,0.2);}
+.t-civil{background:rgba(0,229,255,0.08);color:#00e5ff;border:1px solid rgba(0,229,255,0.2);}
+.t-dao{background:rgba(99,102,241,0.08);color:#818cf8;border:1px solid rgba(99,102,241,0.2);}
+.t-org{background:rgba(245,158,11,0.08);color:#fbbf24;border:1px solid rgba(245,158,11,0.2);}
+.result-bar{height:6px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;margin:4px 0;}
+.result-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:3px;}
+.aerr{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.aok{background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);color:#00ff88;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.key-input{display:flex;gap:8px;margin-bottom:24px;}
+.key-input input{flex:1;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+.stat-mini{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.stat-mini-n{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--blue);}
+.stat-mini-l{font-size:11px;color:var(--muted);margin-top:2px;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}.stats-row{grid-template-columns:1fr 1fr;}.candidate-row{grid-template-columns:1fr auto;}.poll-row{flex-direction:column;align-items:start;}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    Xeris<span>Vote</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="admin-badge">⚙️ Admin</span>
+    <a href="/" style="color:var(--muted);font-size:13px;text-decoration:none;">← Public View</a>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- Auth -->
+  <div id="authSection">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">Enter your admin key to manage polls</div>
+    <div class="key-input">
+      <input id="adminKey" class="finput" type="password" placeholder="Enter admin key..."/>
+      <button class="btn" onclick="authenticate()">Unlock</button>
+    </div>
+    <div id="authAlert"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div class="page-title">Admin Dashboard</div>
+      <button class="btn btn-sm" onclick="loadDashboard()">🔄 Refresh</button>
+    </div>
+    <div class="page-sub" id="dashSub">Managing XerisVote polls</div>
+
+    <div class="stats-row">
+      <div class="stat-mini"><div class="stat-mini-n" id="dTotal">0</div><div class="stat-mini-l">Total Polls</div></div>
+      <div class="stat-mini"><div class="stat-mini-n" id="dActive">0</div><div class="stat-mini-l">Active</div></div>
+      <div class="stat-mini"><div class="stat-mini-n" id="dPending">0</div><div class="stat-mini-l">Pending</div></div>
+      <div class="stat-mini"><div class="stat-mini-n" id="dVotes">0</div><div class="stat-mini-l">Total Votes</div></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('polls',this)">📋 All Polls</div>
+      <div class="tab" onclick="showTab('create',this)">➕ Create Poll</div>
+      <div class="tab" onclick="showTab('voters',this)">👤 Register Voter</div>
+    </div>
+
+    <!-- Polls List -->
+    <div id="tab-polls">
+      <div id="pollsList"></div>
+    </div>
+
+    <!-- Create Poll -->
+    <div id="tab-create" style="display:none;">
+      <div class="card">
+        <div class="section-title">Create New Poll</div>
+        <div id="createAlert"></div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flbl">POLL TITLE</label>
+            <input id="pTitle" class="finput" placeholder="e.g. Presidential Election 2026"/>
+          </div>
+          <div class="field">
+            <label class="flbl">POLL TYPE</label>
+            <select id="pType" class="finput">
+              <option value="referendum">Referendum (Yes/No)</option>
+              <option value="election">Election (Multiple candidates)</option>
+              <option value="dao">DAO Proposal</option>
+              <option value="org">Organisation Vote</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row full">
+          <div class="field">
+            <label class="flbl">DESCRIPTION</label>
+            <textarea id="pDesc" class="finput ftarea" placeholder="Describe what voters are deciding..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flbl">VOTER TIER</label>
+            <select id="pTier" class="finput" onchange="tierChanged()">
+              <option value="dao">DAO (XRS token holders)</option>
+              <option value="civil">Civil (Government ID verified)</option>
+              <option value="org">Organisation (Whitelisted wallets)</option>
+            </select>
+          </div>
+          <div class="field" id="minBalField">
+            <label class="flbl">MIN XRS BALANCE TO VOTE</label>
+            <input id="pMinBal" class="finput" type="number" value="1" min="0" placeholder="1"/>
+          </div>
+        </div>
+
+        <div class="field" id="whitelistField" style="display:none;">
+          <label class="flbl">WHITELISTED WALLETS (one per line)</label>
+          <textarea id="pWhitelist" class="finput ftarea" placeholder="wallet1&#10;wallet2&#10;wallet3"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flbl">START DATE & TIME</label>
+            <input id="pStart" class="finput" type="datetime-local"/>
+          </div>
+          <div class="field">
+            <label class="flbl">END DATE & TIME</label>
+            <input id="pEnd" class="finput" type="datetime-local"/>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:8px;">Candidates / Options</div>
+        <div id="candidatesContainer">
+          <div class="candidate-row">
+            <input class="finput cand-name" placeholder="Candidate name"/>
+            <input class="finput cand-desc" placeholder="Description (optional)"/>
+            <button class="btn btn-sm btn-danger" onclick="removeCand(this)">✕</button>
+          </div>
+          <div class="candidate-row">
+            <input class="finput cand-name" placeholder="Candidate name"/>
+            <input class="finput cand-desc" placeholder="Description (optional)"/>
+            <button class="btn btn-sm btn-danger" onclick="removeCand(this)">✕</button>
+          </div>
+        </div>
+        <div class="add-btn" onclick="addCand()">+ Add Candidate</div>
+
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <button class="btn" onclick="createPoll()" style="flex:1;padding:13px;">Create Poll</button>
+          <button class="btn btn-outline" onclick="resetForm()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Voter -->
+    <div id="tab-voters" style="display:none;">
+      <div class="card">
+        <div class="section-title">Register Civil Voter</div>
+        <div id="voterAlert"></div>
+        <div class="form-row">
+          <div class="field">
+            <label class="flbl">WALLET ADDRESS</label>
+            <input id="vWalletAddr" class="finput" placeholder="Voter wallet address"/>
+          </div>
+          <div class="field">
+            <label class="flbl">TIER</label>
+            <select id="vTier" class="finput">
+              <option value="civil">Civil (Government ID)</option>
+              <option value="org">Organisation</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" onclick="registerVoter()">Register Voter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;" id="resTitle"></div>
+      <button onclick="document.getElementById('resultsModal').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;">✕</button>
+    </div>
+    <div id="resContent"></div>
+  </div>
+</div>
+
+<script>
+const API = 'https://xeris-vote-production.up.railway.app';
+let adminKey = '';
+let polls = [];
+
+function authenticate() {
+  const k = document.getElementById('adminKey').value.trim();
+  if (!k) return showAuthAlert('Enter admin key', 'err');
+  adminKey = k;
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  try {
+    const r = await fetch(API + '/polls');
+    polls = await r.json();
+    if (!Array.isArray(polls)) { showAuthAlert('Invalid admin key or API error', 'err'); return; }
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('dTotal').textContent = polls.length;
+    document.getElementById('dActive').textContent = polls.filter(p=>p.status==='active').length;
+    document.getElementById('dPending').textContent = polls.filter(p=>p.status==='pending').length;
+    document.getElementById('dVotes').textContent = polls.reduce((s,p)=>s+(p.totalVotes||0),0);
+    renderPolls();
+  } catch(e) { showAuthAlert('Connection error: ' + e.message, 'err'); }
+}
+
+function renderPolls() {
+  const c = document.getElementById('pollsList');
+  if (!polls.length) { c.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">No polls yet. Create one!</div>'; return; }
+  const sc = {active:'s-active',pending:'s-pending',ended:'s-ended'};
+  const tc = {civil:'t-civil',dao:'t-dao',org:'t-org'};
+  c.innerHTML = polls.map(p => `
+    <div class="poll-row">
+      <div class="poll-info">
+        <div class="poll-title-sm">${p.title}</div>
+        <div class="poll-meta">
+          <span class="sbadge ${sc[p.status]||'s-pending'}">${p.status.toUpperCase()}</span>
+          <span class="sbadge ${tc[p.tier]||'t-dao'}">${p.tier.toUpperCase()}</span>
+          <span>${p.totalVotes||0} votes</span>
+          <span>${p.candidates.length} candidates</span>
+          <span>Ends: ${new Date(p.endTime).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <div class="poll-actions">
+        <button class="btn btn-sm btn-outline" onclick="viewResults('${p.id}')">📊 Results</button>
+      </div>
+    </div>`).join('');
+}
+
+async function viewResults(id) {
+  const r = await fetch(API + '/polls/' + id + '/results');
+  const d = await r.json();
+  document.getElementById('resTitle').textContent = d.title;
+  document.getElementById('resContent').innerHTML = `
+    <div style="color:var(--muted);font-size:13px;margin-bottom:16px;">Total Votes: <b style="color:var(--text);">${d.totalVotes}</b> | Status: <b style="color:var(--blue);">${d.status.toUpperCase()}</b></div>
+    ${d.results.map((r,i) => `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px;">
+          <span>${i===0?'🥇':''}${i===1?'🥈':''}${i===2?'🥉':''} ${r.name}</span>
+          <span style="color:var(--blue);">${r.percentage}%</span>
+        </div>
+        <div class="result-bar"><div class="result-fill" style="width:${r.percentage}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);">${r.votes} votes</div>
+      </div>`).join('')}`;
+  document.getElementById('resultsModal').style.display = 'flex';
+}
+
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['polls','create','voters'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function tierChanged() {
+  const tier = document.getElementById('pTier').value;
+  document.getElementById('minBalField').style.display = tier==='dao' ? 'block' : 'none';
+  document.getElementById('whitelistField').style.display = tier==='org' ? 'block' : 'none';
+}
+
+function addCand() {
+  const row = document.createElement('div');
+  row.className = 'candidate-row';
+  row.innerHTML = '<input class="finput cand-name" placeholder="Candidate name"/><input class="finput cand-desc" placeholder="Description (optional)"/><button class="btn btn-sm btn-danger" onclick="removeCand(this)">✕</button>';
+  document.getElementById('candidatesContainer').appendChild(row);
+}
+
+function removeCand(btn) {
+  const rows = document.querySelectorAll('.candidate-row');
+  if (rows.length <= 2) return alert('Need at least 2 candidates');
+  btn.closest('.candidate-row').remove();
+}
+
+async function createPoll() {
+  document.getElementById('createAlert').innerHTML = '';
+  const title = document.getElementById('pTitle').value.trim();
+  const desc = document.getElementById('pDesc').value.trim();
+  const type = document.getElementById('pType').value;
+  const tier = document.getElementById('pTier').value;
+  const start = document.getElementById('pStart').value;
+  const end = document.getElementById('pEnd').value;
+  const minBal = parseFloat(document.getElementById('pMinBal').value) || 0;
+  const whitelist = document.getElementById('pWhitelist').value.split('\n').map(w=>w.trim()).filter(Boolean);
+
+  if (!title) return showCreateAlert('Enter poll title', 'err');
+  if (!start || !end) return showCreateAlert('Set start and end times', 'err');
+  if (new Date(start) >= new Date(end)) return showCreateAlert('End time must be after start', 'err');
+
+  const nameInputs = document.querySelectorAll('.cand-name');
+  const descInputs = document.querySelectorAll('.cand-desc');
+  const candidates = [];
+  nameInputs.forEach((inp, i) => {
+    if (inp.value.trim()) {
+      candidates.push({ id: 'c' + i + '_' + Math.random().toString(36).slice(2,6), name: inp.value.trim(), description: descInputs[i]?.value.trim() || '' });
+    }
+  });
+  if (candidates.length < 2) return showCreateAlert('Add at least 2 candidates', 'err');
+
+  try {
+    const r = await fetch(API + '/polls', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ title, description: desc, type, tier, candidates,
+        startTime: new Date(start).toISOString(), endTime: new Date(end).toISOString(),
+        minTokenBalance: minBal, whitelistedWallets: whitelist, adminKey })
+    });
+    const d = await r.json();
+    if (d.error) return showCreateAlert(d.error, 'err');
+    showCreateAlert('Poll created! ID: ' + d.poll.id, 'ok');
+    resetForm();
+    await loadDashboard();
+  } catch(e) { showCreateAlert('Error: ' + e.message, 'err'); }
+}
+
+function resetForm() {
+  ['pTitle','pDesc','pStart','pEnd'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pMinBal').value = '1';
+  document.getElementById('pWhitelist').value = '';
+  const c = document.getElementById('candidatesContainer');
+  c.innerHTML = '<div class="candidate-row"><input class="finput cand-name" placeholder="Candidate name"/><input class="finput cand-desc" placeholder="Description (optional)"/><button class="btn btn-sm btn-danger" onclick="removeCand(this)">✕</button></div><div class="candidate-row"><input class="finput cand-name" placeholder="Candidate name"/><input class="finput cand-desc" placeholder="Description (optional)"/><button class="btn btn-sm btn-danger" onclick="removeCand(this)">✕</button></div>';
+}
+
+async function registerVoter() {
+  document.getElementById('voterAlert').innerHTML = '';
+  const wallet = document.getElementById('vWalletAddr').value.trim();
+  const tier = document.getElementById('vTier').value;
+  if (!wallet) return showVoterAlert('Enter wallet address', 'err');
+  try {
+    const r = await fetch(API + '/voters/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ wallet, tier, adminKey })
+    });
+    const d = await r.json();
+    if (d.error) return showVoterAlert(d.error, 'err');
+    showVoterAlert('Voter registered successfully!', 'ok');
+    document.getElementById('vWalletAddr').value = '';
+  } catch(e) { showVoterAlert('Error: ' + e.message, 'err'); }
+}
+
+function showAuthAlert(msg,t){document.getElementById('authAlert').innerHTML=`<div class="a${t}">${msg}</div>`;}
+function showCreateAlert(msg,t){document.getElementById('createAlert').innerHTML=`<div class="a${t}">${msg}</div>`;}
+function showVoterAlert(msg,t){document.getElementById('voterAlert').innerHTML=`<div class="a${t}">${msg}</div>`;}
+
+window.onclick = e => { if(e.target===document.getElementById('resultsModal')) document.getElementById('resultsModal').style.display='none'; };
+
+// Set default times
+const now = new Date(); const end = new Date(now.getTime() + 7*24*60*60*1000);
+document.getElementById('pStart').value = now.toISOString().slice(0,16);
+document.getElementById('pEnd').value = end.toISOString().slice(0,16);
+</script>
+</body>
+</html>
