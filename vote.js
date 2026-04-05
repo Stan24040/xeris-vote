@@ -56,7 +56,9 @@ const Vote = mongoose.model('Vote', voteSchema);
 const Voter = mongoose.model('Voter', voterSchema);
 
 // ── Connect MongoDB ────────────────────────────────────────────────────────────
-mongoose.connect(process.env.MONGO_URL).then(() => console.log('MongoDB connected'));
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => { console.error('MongoDB error:', err.message); process.exit(1); });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 10); }
@@ -189,4 +191,6 @@ setInterval(async () => {
   await Poll.updateMany({ status: 'active', endTime: { $lte: now } }, { status: 'ended' });
 }, 30000);
 
-app.listen(PORT, () => console.log(`XerisVote running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`XerisVote running on port ${PORT}`));
+process.on('unhandledRejection', (err) => { console.error('Unhandled rejection:', err.message); });
+process.on('uncaughtException', (err) => { console.error('Uncaught exception:', err.message); });
