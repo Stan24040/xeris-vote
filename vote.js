@@ -4,6 +4,42 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+const mailer = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  }
+});
+
+async function sendApprovalEmail(org) {
+  if (!process.env.MAIL_USER) return;
+  try {
+    await mailer.sendMail({
+      from: '"XerisVote" <' + process.env.MAIL_USER + '>',
+      to: org.email,
+      subject: '✅ Your XerisVote Organisation Has Been Approved!',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#020408;color:#e2e8f0;padding:32px;border-radius:16px;">
+          <h2 style="color:#00b4ff;margin-bottom:8px;">Welcome to XerisVote! ⚡</h2>
+          <p style="color:#718096;margin-bottom:24px;">Your organisation <b style="color:#fff;">${org.name}</b> has been approved.</p>
+          <div style="background:#070d14;border:1px solid rgba(0,180,255,0.2);border-radius:12px;padding:20px;margin-bottom:24px;">
+            <p style="font-size:12px;color:#718096;margin-bottom:8px;">YOUR API KEY</p>
+            <p style="font-family:monospace;font-size:16px;color:#00e5ff;word-break:break-all;">${org.apiKey}</p>
+          </div>
+          <p style="color:#718096;margin-bottom:16px;">Use this key to login to your dashboard:</p>
+          <a href="https://xeris-vote-production.up.railway.app/org.html" style="background:linear-gradient(135deg,#00b4ff,#0066ff);color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;">Open Dashboard →</a>
+          <p style="color:#4a6080;font-size:12px;margin-top:24px;">Keep your API key safe. Do not share it publicly.</p>
+        </div>
+      `
+    });
+    console.log('[Mail] Approval email sent to', org.email);
+  } catch(e) {
+    console.error('[Mail] Failed to send email:', e.message);
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -262,6 +298,7 @@ app.post('/admin/orgs/:id/approve', async (req, res) => {
     if (key !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
     const org = await Org.findOneAndUpdate({ id: req.params.id }, { status: 'approved' }, { new: true });
     if (!org) return res.status(404).json({ error: 'Org not found' });
+    await sendApprovalEmail(org);
     res.json({ success: true, apiKey: org.apiKey, org });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
