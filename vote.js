@@ -66,10 +66,24 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 
 async function getXrsBalance(wallet) {
   try {
-    const r = await fetch(`${XERIS_NODE}/account/${wallet}`);
+    const r = await fetch(`http://138.197.116.81:50008/v2/account/${wallet}`);
     const d = await r.json();
-    return (d?.data?.balance_xrs || d?.native_xrs || 0) / 1e9;
-  } catch { return 0; }
+    const bal = d?.data?.balance_xrs || 0;
+    console.log('[Balance]', wallet.slice(0,8), bal, 'XRS');
+    return bal;
+  } catch(e) {
+    console.error('[Balance error]', e.message);
+    return 0;
+  }
+}`);
+    const d = await r.json();
+    const bal = d?.balance || d?.data?.balance_xrs || d?.native_xrs || d?.xrs || 0;
+    console.log('[Balance]', wallet.slice(0,8), bal);
+    return typeof bal === 'string' ? parseFloat(bal) / 1e9 : bal / 1e9;
+  } catch(e) {
+    console.error('[Balance error]', e.message);
+    return 0;
+  }
 }
 
 async function verifyWalletEligibility(wallet, poll) {
