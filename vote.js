@@ -8,6 +8,7 @@ const cors = require('cors');
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use(require('express').static('public'));
 
 const PORT = process.env.PORT || 3000;
 const XERIS_NODE = 'http://138.197.116.81:56001';
