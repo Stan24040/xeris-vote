@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
@@ -10,9 +11,27 @@ app.use(cors());
 app.use(require('express').static('public'));
 
 const PORT = process.env.PORT || 3000;
+const SUPER_ADMIN_KEY = process.env.ADMIN_KEY || 'xeris-vote-admin-2026';
+
+// ── Schemas ───────────────────────────────────────────────────────────────────
+const orgSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  name: String,
+  email: String,
+  wallet: String,
+  description: String,
+  website: String,
+  apiKey: { type: String, unique: true },
+  status: { type: String, enum: ['pending', 'approved', 'suspended'], default: 'pending' },
+  plan: { type: String, enum: ['free', 'pro', 'enterprise'], default: 'free' },
+  pollCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
 
 const pollSchema = new mongoose.Schema({
   id: { type: String, unique: true },
+  orgId: { type: String, default: 'superadmin' },
+  orgName: { type: String, default: 'XerisVote' },
   title: String,
   description: String,
   type: { type: String, enum: ['referendum', 'election', 'dao', 'org'] },
@@ -43,9 +62,11 @@ const voterSchema = new mongoose.Schema({
   tier: { type: String, enum: ['civil', 'dao', 'org'] },
   verified: { type: Boolean, default: false },
   verifiedBy: String,
+  orgId: String,
   registeredAt: { type: Date, default: Date.now }
 });
 
+const Org = mongoose.model('Org', orgSchema);
 const Poll = mongoose.model('Poll', pollSchema);
 const Vote = mongoose.model('Vote', voteSchema);
 const Voter = mongoose.model('Voter', voterSchema);
@@ -54,24 +75,21 @@ mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => { console.error('MongoDB error:', err.message); process.exit(1); });
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 10); }
+function genApiKey() { return 'xv_' + crypto.randomBytes(24).toString('hex'); }
 
 async function getXrsBalance(wallet) {
   try {
     const r = await fetch('http://138.197.116.81:50008/v2/account/' + wallet);
     const d = await r.json();
-    const bal = d && d.data ? (d.data.balance_xrs || 0) : 0;
-    console.log('[Balance]', wallet.slice(0,8), bal, 'XRS');
-    return bal;
-  } catch(e) {
-    console.error('[Balance error]', e.message);
-    return 0;
-  }
+    return d && d.data ? (d.data.balance_xrs || 0) : 0;
+  } catch(e) { return 0; }
 }
 
 async function verifyWalletEligibility(wallet, poll) {
   if (poll.tier === 'civil') {
-    const voter = await Voter.findOne({ wallet, tier: 'civil', verified: true });
+    const voter = await Voter.findOne({ wallet, verified: true });
     return !!voter;
   }
   if (poll.tier === 'dao') {
@@ -84,6 +102,18 @@ async function verifyWalletEligibility(wallet, poll) {
   return false;
 }
 
+// Middleware: verify org API key
+async function authOrg(req, res, next) {
+  const key = req.headers['x-api-key'] || req.body?.apiKey;
+  if (!key) return res.status(401).json({ error: 'API key required' });
+  if (key === SUPER_ADMIN_KEY) { req.org = { id: 'superadmin', name: 'XerisVote', isSuperAdmin: true }; return next(); }
+  const org = await Org.findOne({ apiKey: key, status: 'approved' });
+  if (!org) return res.status(401).json({ error: 'Invalid or unauthorized API key' });
+  req.org = org;
+  next();
+}
+
+// ── PUBLIC ROUTES ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.get('/polls', async (req, res) => {
@@ -101,20 +131,15 @@ app.get('/polls/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/polls', async (req, res) => {
+app.get('/polls/:id/results', async (req, res) => {
   try {
-    const { title, description, type, tier, candidates, startTime, endTime,
-            minTokenBalance, tokenAddress, whitelistedWallets, adminKey, creatorWallet } = req.body;
-    if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-    const poll = new Poll({
-      id: genId(), title, description, type, tier, candidates,
-      startTime: new Date(startTime), endTime: new Date(endTime),
-      minTokenBalance, tokenAddress,
-      whitelistedWallets: whitelistedWallets || [],
-      status: 'pending', createdBy: creatorWallet
-    });
-    await poll.save();
-    res.json({ success: true, poll });
+    const poll = await Poll.findOne({ id: req.params.id });
+    if (!poll) return res.status(404).json({ error: 'Poll not found' });
+    const results = poll.candidates.map(c => ({
+      id: c.id, name: c.name, votes: c.votes,
+      percentage: poll.totalVotes > 0 ? ((c.votes / poll.totalVotes) * 100).toFixed(1) : '0'
+    })).sort((a, b) => b.votes - a.votes);
+    res.json({ pollId: poll.id, title: poll.title, totalVotes: poll.totalVotes, results, status: poll.status, orgName: poll.orgName });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -141,31 +166,6 @@ app.post('/vote', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/polls/:id/results', async (req, res) => {
-  try {
-    const poll = await Poll.findOne({ id: req.params.id });
-    if (!poll) return res.status(404).json({ error: 'Poll not found' });
-    const results = poll.candidates.map(c => ({
-      id: c.id, name: c.name, votes: c.votes,
-      percentage: poll.totalVotes > 0 ? ((c.votes / poll.totalVotes) * 100).toFixed(1) : '0'
-    })).sort((a, b) => b.votes - a.votes);
-    res.json({ pollId: poll.id, title: poll.title, totalVotes: poll.totalVotes, results, status: poll.status });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/voters/register', async (req, res) => {
-  try {
-    const { wallet, tier, adminKey } = req.body;
-    if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-    await Voter.findOneAndUpdate(
-      { wallet },
-      { wallet, tier, verified: true, verifiedBy: 'admin' },
-      { upsert: true }
-    );
-    res.json({ success: true, message: 'Voter registered' });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
 app.get('/voters/:wallet/eligible/:pollId', async (req, res) => {
   try {
     const poll = await Poll.findOne({ id: req.params.pollId });
@@ -176,6 +176,139 @@ app.get('/voters/:wallet/eligible/:pollId', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── ORG REGISTRATION ──────────────────────────────────────────────────────────
+app.post('/org/register', async (req, res) => {
+  try {
+    const { name, email, wallet, description, website } = req.body;
+    if (!name || !email || !wallet) return res.status(400).json({ error: 'Name, email and wallet required' });
+    const existing = await Org.findOne({ email });
+    if (existing) return res.status(400).json({ error: 'Email already registered' });
+    const org = new Org({
+      id: genId(), name, email, wallet, description, website,
+      apiKey: genApiKey(), status: 'pending'
+    });
+    await org.save();
+    res.json({ success: true, message: 'Registration submitted! Await admin approval.', orgId: org.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/org/login', async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey) return res.status(400).json({ error: 'API key required' });
+    const org = await Org.findOne({ apiKey });
+    if (!org) return res.status(404).json({ error: 'Invalid API key' });
+    if (org.status === 'pending') return res.status(403).json({ error: 'Account pending approval' });
+    if (org.status === 'suspended') return res.status(403).json({ error: 'Account suspended' });
+    res.json({ success: true, org: { id: org.id, name: org.name, email: org.email, status: org.status, plan: org.plan, pollCount: org.pollCount } });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── ORG POLL MANAGEMENT ───────────────────────────────────────────────────────
+app.post('/org/polls', authOrg, async (req, res) => {
+  try {
+    const { title, description, type, tier, candidates, startTime, endTime,
+            minTokenBalance, tokenAddress, whitelistedWallets, creatorWallet } = req.body;
+    if (!title || !candidates || !startTime || !endTime) return res.status(400).json({ error: 'Missing required fields' });
+    if (candidates.length < 2) return res.status(400).json({ error: 'Need at least 2 candidates' });
+    const poll = new Poll({
+      id: genId(), orgId: req.org.id, orgName: req.org.name,
+      title, description, type, tier, candidates,
+      startTime: new Date(startTime), endTime: new Date(endTime),
+      minTokenBalance, tokenAddress,
+      whitelistedWallets: whitelistedWallets || [],
+      status: 'pending', createdBy: creatorWallet
+    });
+    await poll.save();
+    if (!req.org.isSuperAdmin) await Org.updateOne({ id: req.org.id }, { $inc: { pollCount: 1 } });
+    res.json({ success: true, poll });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/org/polls', authOrg, async (req, res) => {
+  try {
+    const filter = req.org.isSuperAdmin ? {} : { orgId: req.org.id };
+    const polls = await Poll.find(filter).sort({ createdAt: -1 });
+    res.json(polls);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/org/voters/register', authOrg, async (req, res) => {
+  try {
+    const { wallet, tier } = req.body;
+    if (!wallet) return res.status(400).json({ error: 'Wallet required' });
+    await Voter.findOneAndUpdate(
+      { wallet },
+      { wallet, tier: tier || 'civil', verified: true, verifiedBy: req.org.id, orgId: req.org.id },
+      { upsert: true }
+    );
+    res.json({ success: true, message: 'Voter registered' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SUPER ADMIN ROUTES ────────────────────────────────────────────────────────
+app.get('/admin/orgs', async (req, res) => {
+  try {
+    const key = req.headers['x-api-key'] || req.query.key;
+    if (key !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    const orgs = await Org.find().sort({ createdAt: -1 });
+    res.json(orgs);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/admin/orgs/:id/approve', async (req, res) => {
+  try {
+    const key = req.headers['x-api-key'] || req.body.adminKey;
+    if (key !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    const org = await Org.findOneAndUpdate({ id: req.params.id }, { status: 'approved' }, { new: true });
+    if (!org) return res.status(404).json({ error: 'Org not found' });
+    res.json({ success: true, apiKey: org.apiKey, org });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/admin/orgs/:id/suspend', async (req, res) => {
+  try {
+    const key = req.headers['x-api-key'] || req.body.adminKey;
+    if (key !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    await Org.findOneAndUpdate({ id: req.params.id }, { status: 'suspended' });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// backward compat - old admin route still works
+app.post('/polls', async (req, res) => {
+  try {
+    const { adminKey, apiKey, title, description, type, tier, candidates, startTime, endTime,
+            minTokenBalance, tokenAddress, whitelistedWallets, creatorWallet } = req.body;
+    const key = adminKey || apiKey;
+    if (key !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    const poll = new Poll({
+      id: genId(), orgId: 'superadmin', orgName: 'XerisVote',
+      title, description, type, tier, candidates,
+      startTime: new Date(startTime), endTime: new Date(endTime),
+      minTokenBalance, tokenAddress,
+      whitelistedWallets: whitelistedWallets || [],
+      status: 'pending', createdBy: creatorWallet
+    });
+    await poll.save();
+    res.json({ success: true, poll });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/voters/register', async (req, res) => {
+  try {
+    const { wallet, tier, adminKey } = req.body;
+    if (adminKey !== SUPER_ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    await Voter.findOneAndUpdate(
+      { wallet },
+      { wallet, tier, verified: true, verifiedBy: 'superadmin' },
+      { upsert: true }
+    );
+    res.json({ success: true, message: 'Voter registered' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── AUTO STATUS UPDATE ─────────────────────────────────────────────────────────
 setInterval(async () => {
   try {
     const now = new Date();
@@ -185,5 +318,5 @@ setInterval(async () => {
 }, 30000);
 
 app.listen(PORT, () => console.log('XerisVote running on port ' + PORT));
-process.on('unhandledRejection', (err) => { console.error('Unhandled rejection:', err.message); });
-process.on('uncaughtException', (err) => { console.error('Uncaught exception:', err.message); });
+process.on('unhandledRejection', (err) => { console.error('Unhandled:', err.message); });
+process.on('uncaughtException', (err) => { console.error('Uncaught:', err.message); });

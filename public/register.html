@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XerisVote — Register Organisation</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020408;--bg2:#070d14;--border:rgba(0,180,255,0.12);--blue:#00b4ff;--blue2:#0066ff;--cyan:#00e5ff;--text:#e2e8f0;--muted:#4a6080;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:rgba(2,4,8,0.9);}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--blue2));border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo span{color:var(--blue);}
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 16px;}
+.box{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:36px;width:100%;max-width:520px;position:relative;}
+.box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--cyan),transparent);border-radius:24px 24px 0 0;}
+.box-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:6px;}
+.box-sub{color:var(--muted);font-size:13px;margin-bottom:28px;line-height:1.6;}
+.field{margin-bottom:16px;}
+.flbl{font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:0.3px;display:block;}
+.finput{width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;transition:border-color 0.2s;}
+.finput:focus{border-color:var(--blue);}
+.ftarea{resize:vertical;min-height:80px;}
+.btn{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border:none;width:100%;padding:13px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;margin-top:8px;}
+.btn:hover{opacity:0.85;}
+.aerr{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.aok{background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);color:#00ff88;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.links{text-align:center;margin-top:20px;font-size:13px;color:var(--muted);}
+.links a{color:var(--blue);text-decoration:none;}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo"><div class="logo-icon">⚡</div>Xeris<span>Vote</span></div>
+  <a href="/" style="color:var(--muted);font-size:13px;text-decoration:none;">← Back to polls</a>
+</nav>
+<div class="main">
+  <div class="box">
+    <div class="box-title">Register Organisation</div>
+    <div class="box-sub">Create polls for your community, DAO, or organisation. All votes are recorded on the Xeris blockchain.</div>
+    <div id="alert"></div>
+    <div id="form">
+      <div class="field"><label class="flbl">ORGANISATION NAME *</label><input id="name" class="finput" placeholder="e.g. Xeris DAO, City Council..."/></div>
+      <div class="field"><label class="flbl">EMAIL ADDRESS *</label><input id="email" class="finput" type="email" placeholder="contact@yourorg.com"/></div>
+      <div class="field"><label class="flbl">XERIS WALLET ADDRESS *</label><input id="wallet" class="finput" placeholder="Your Xeris wallet..."/></div>
+      <div class="field"><label class="flbl">DESCRIPTION</label><textarea id="desc" class="finput ftarea" placeholder="What is your organisation about?"></textarea></div>
+      <div class="field"><label class="flbl">WEBSITE</label><input id="website" class="finput" placeholder="https://yourorg.com"/></div>
+      <button class="btn" onclick="register()">Submit Registration</button>
+    </div>
+    <div class="links">Already registered? <a href="/org.html">Login to dashboard</a></div>
+  </div>
+</div>
+<script>
+const API='https://xeris-vote-production.up.railway.app';
+async function register(){
+  document.getElementById('alert').innerHTML='';
+  const name=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const wallet=document.getElementById('wallet').value.trim();
+  const desc=document.getElementById('desc').value.trim();
+  const website=document.getElementById('website').value.trim();
+  if(!name||!email||!wallet) return show('Name, email and wallet are required','err');
+  try{
+    const r=await fetch(API+'/org/register',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,wallet,description:desc,website})});
+    const d=await r.json();
+    if(d.error) return show(d.error,'err');
+    document.getElementById('form').innerHTML='<div class="aok">✅ Registration submitted successfully!<br><br>Your application is pending admin approval. You will receive your API key once approved.<br><br><b>Org ID: '+d.orgId+'</b></div>';
+  }catch(e){show('Error: '+e.message,'err');}
+}
+function show(msg,t){document.getElementById('alert').innerHTML='<div class="a'+t+'">'+msg+'</div>';}
+</script>
+</body>
+</html>

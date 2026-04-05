@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XerisVote — Organisation Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020408;--bg2:#070d14;--bg3:#0c1520;--border:rgba(0,180,255,0.12);--blue:#00b4ff;--blue2:#0066ff;--cyan:#00e5ff;--text:#e2e8f0;--muted:#4a6080;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+nav{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:rgba(2,4,8,0.9);}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--blue),var(--blue2));border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo span{color:var(--blue);}
+.btn{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;}
+.btn:hover{opacity:0.85;}
+.btn-sm{padding:7px 14px;font-size:12px;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);}
+.container{max-width:1000px;margin:0 auto;padding:32px 24px;position:relative;z-index:1;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px;position:relative;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),transparent);border-radius:16px 16px 0 0;}
+.page-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;margin-bottom:4px;}
+.page-sub{color:var(--muted);font-size:13px;margin-bottom:28px;}
+.tabs{display:flex;gap:4px;margin-bottom:28px;border-bottom:1px solid var(--border);}
+.tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all 0.2s;margin-bottom:-1px;}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.stat-n{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--blue);}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px;}
+.field{margin-bottom:16px;}
+.flbl{font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:0.3px;display:block;}
+.finput{width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;}
+.finput:focus{border-color:var(--blue);}
+select.finput option{background:#0d1117;}
+.ftarea{resize:vertical;min-height:80px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.cand-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:8px;align-items:center;}
+.add-btn{background:rgba(0,180,255,0.08);border:1px dashed rgba(0,180,255,0.3);color:var(--blue);padding:10px;border-radius:10px;cursor:pointer;font-size:13px;text-align:center;}
+.poll-row{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.poll-title-sm{font-weight:600;font-size:13px;margin-bottom:3px;}
+.poll-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+.sbadge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.s-active{background:rgba(0,255,136,0.08);color:#00ff88;border:1px solid rgba(0,255,136,0.2);}
+.s-pending{background:rgba(255,165,0,0.08);color:#ffa500;border:1px solid rgba(255,165,0,0.2);}
+.s-ended{background:rgba(100,100,120,0.08);color:#64748b;border:1px solid rgba(100,100,120,0.2);}
+.aerr{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.aok{background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);color:#00ff88;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;}
+.login-box{max-width:420px;margin:80px auto;background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:32px;position:relative;}
+.login-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--cyan),transparent);border-radius:24px 24px 0 0;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}.stats-row{grid-template-columns:1fr 1fr;}.cand-row{grid-template-columns:1fr auto;}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo"><div class="logo-icon">⚡</div>Xeris<span>Vote</span></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="orgBadge" style="font-size:13px;color:var(--muted);"></span>
+    <a href="/" style="color:var(--muted);font-size:12px;text-decoration:none;">← Public</a>
+    <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="container">
+  <!-- Login -->
+  <div id="loginSection" class="login-box">
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;">Organisation Login</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:24px;">Enter your API key to access your dashboard</div>
+    <div id="loginAlert"></div>
+    <div class="field"><label class="flbl">API KEY</label><input id="apiKeyInput" class="finput" type="password" placeholder="xv_..."/></div>
+    <button class="btn" style="width:100%;padding:12px;" onclick="login()">Login</button>
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted);">No account? <a href="/register.html" style="color:var(--blue);text-decoration:none;">Register here</a></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashSection" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div class="page-title" id="dashTitle">Dashboard</div>
+      <button class="btn btn-sm" onclick="loadPolls()">🔄 Refresh</button>
+    </div>
+    <div class="page-sub" id="dashSub"></div>
+
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n" id="sTotal">0</div><div class="stat-l">TOTAL POLLS</div></div>
+      <div class="stat"><div class="stat-n" id="sActive">0</div><div class="stat-l">ACTIVE</div></div>
+      <div class="stat"><div class="stat-n" id="sVotes">0</div><div class="stat-l">VOTES CAST</div></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('polls',this)">📋 My Polls</div>
+      <div class="tab" onclick="showTab('create',this)">➕ Create Poll</div>
+      <div class="tab" onclick="showTab('voters',this)">👤 Register Voter</div>
+    </div>
+
+    <!-- Polls -->
+    <div id="tab-polls">
+      <div id="pollsList"><div style="color:var(--muted);text-align:center;padding:40px;">Loading polls...</div></div>
+    </div>
+
+    <!-- Create -->
+    <div id="tab-create" style="display:none;">
+      <div class="card">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin-bottom:16px;">Create New Poll</div>
+        <div id="createAlert"></div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="field"><label class="flbl">TITLE *</label><input id="pTitle" class="finput" placeholder="Poll title"/></div>
+          <div class="field"><label class="flbl">TYPE</label>
+            <select id="pType" class="finput">
+              <option value="referendum">Referendum</option>
+              <option value="election">Election</option>
+              <option value="dao">DAO Proposal</option>
+              <option value="org">Organisation Vote</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label class="flbl">DESCRIPTION</label><textarea id="pDesc" class="finput ftarea" placeholder="What are voters deciding?"></textarea></div>
+        <div class="form-row" style="margin-bottom:0;">
+          <div class="field"><label class="flbl">VOTER TIER</label>
+            <select id="pTier" class="finput" onchange="tierChanged()">
+              <option value="dao">DAO (XRS holders)</option>
+              <option value="civil">Civil (Verified)</option>
+              <option value="org">Org (Whitelisted)</option>
+            </select>
+          </div>
+          <div class="field" id="minBalField"><label class="flbl">MIN XRS BALANCE</label><input id="pMinBal" class="finput" type="number" value="1"/></div>
+        </div>
+        <div class="field" id="whitelistField" style="display:none;"><label class="flbl">WHITELISTED WALLETS (one per line)</label><textarea id="pWhitelist" class="finput ftarea" placeholder="wallet1&#10;wallet2"></textarea></div>
+        <div class="form-row" style="margin-bottom:16px;">
+          <div class="field"><label class="flbl">START TIME *</label><input id="pStart" class="finput" type="datetime-local"/></div>
+          <div class="field"><label class="flbl">END TIME *</label><input id="pEnd" class="finput" type="datetime-local"/></div>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--blue);margin-bottom:12px;">Candidates / Options</div>
+        <div id="candsBox">
+          <div class="cand-row"><input class="finput cn" placeholder="Name"/><input class="finput cd" placeholder="Description"/><button class="btn btn-sm btn-danger" onclick="rmCand(this)">✕</button></div>
+          <div class="cand-row"><input class="finput cn" placeholder="Name"/><input class="finput cd" placeholder="Description"/><button class="btn btn-sm btn-danger" onclick="rmCand(this)">✕</button></div>
+        </div>
+        <div class="add-btn" onclick="addCand()">+ Add Candidate</div>
+        <button class="btn" style="width:100%;padding:13px;margin-top:20px;" onclick="createPoll()">Create Poll</button>
+      </div>
+    </div>
+
+    <!-- Voters -->
+    <div id="tab-voters" style="display:none;">
+      <div class="card">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--blue);margin-bottom:16px;">Register Voter</div>
+        <div id="voterAlert"></div>
+        <div class="form-row">
+          <div class="field"><label class="flbl">WALLET ADDRESS</label><input id="vAddr" class="finput" placeholder="Voter wallet"/></div>
+          <div class="field"><label class="flbl">TIER</label><select id="vTier" class="finput"><option value="civil">Civil</option><option value="org">Organisation</option></select></div>
+        </div>
+        <button class="btn btn-sm" onclick="registerVoter()">Register Voter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='https://xeris-vote-production.up.railway.app';
+let apiKey='',orgData=null,polls=[];
+
+async function login(){
+  document.getElementById('loginAlert').innerHTML='';
+  const k=document.getElementById('apiKeyInput').value.trim();
+  if(!k) return showAlert('loginAlert','Enter API key','err');
+  try{
+    const r=await fetch(API+'/org/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:k})});
+    const d=await r.json();
+    if(d.error) return showAlert('loginAlert',d.error,'err');
+    apiKey=k; orgData=d.org;
+    document.getElementById('loginSection').style.display='none';
+    document.getElementById('dashSection').style.display='block';
+    document.getElementById('dashTitle').textContent=orgData.name;
+    document.getElementById('dashSub').textContent='Plan: '+orgData.plan.toUpperCase()+' | Polls created: '+orgData.pollCount;
+    document.getElementById('orgBadge').textContent=orgData.name;
+    const now=new Date(); const end=new Date(now.getTime()+7*24*60*60*1000);
+    document.getElementById('pStart').value=now.toISOString().slice(0,16);
+    document.getElementById('pEnd').value=end.toISOString().slice(0,16);
+    loadPolls();
+  }catch(e){showAlert('loginAlert','Error: '+e.message,'err');}
+}
+
+async function loadPolls(){
+  try{
+    const r=await fetch(API+'/org/polls',{headers:{'x-api-key':apiKey}});
+    polls=await r.json();
+    document.getElementById('sTotal').textContent=polls.length;
+    document.getElementById('sActive').textContent=polls.filter(p=>p.status==='active').length;
+    document.getElementById('sVotes').textContent=polls.reduce((s,p)=>s+(p.totalVotes||0),0);
+    renderPolls();
+  }catch(e){}
+}
+
+function renderPolls(){
+  const c=document.getElementById('pollsList');
+  if(!polls.length){c.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No polls yet. Create one!</div>';return;}
+  const sc={active:'s-active',pending:'s-pending',ended:'s-ended'};
+  c.innerHTML=polls.map(p=>`
+    <div class="poll-row">
+      <div style="flex:1;">
+        <div class="poll-title-sm">${p.title}</div>
+        <div class="poll-meta">
+          <span class="sbadge ${sc[p.status]||'s-pending'}">${p.status.toUpperCase()}</span>
+          <span>${p.tier.toUpperCase()}</span>
+          <span>${p.totalVotes||0} votes</span>
+          <span>${p.candidates.length} candidates</span>
+          <span>Ends ${new Date(p.endTime).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <a href="/?poll=${p.id}" target="_blank" class="btn btn-sm btn-outline">View</a>
+    </div>`).join('');
+}
+
+function showTab(t,el){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  ['polls','create','voters'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
+}
+
+function tierChanged(){
+  const t=document.getElementById('pTier').value;
+  document.getElementById('minBalField').style.display=t==='dao'?'block':'none';
+  document.getElementById('whitelistField').style.display=t==='org'?'block':'none';
+}
+
+function addCand(){
+  const row=document.createElement('div');row.className='cand-row';
+  row.innerHTML='<input class="finput cn" placeholder="Name"/><input class="finput cd" placeholder="Description"/><button class="btn btn-sm btn-danger" onclick="rmCand(this)">✕</button>';
+  document.getElementById('candsBox').appendChild(row);
+}
+function rmCand(btn){
+  if(document.querySelectorAll('.cand-row').length<=2)return alert('Need at least 2');
+  btn.closest('.cand-row').remove();
+}
+
+async function createPoll(){
+  document.getElementById('createAlert').innerHTML='';
+  const title=document.getElementById('pTitle').value.trim();
+  const desc=document.getElementById('pDesc').value.trim();
+  const type=document.getElementById('pType').value;
+  const tier=document.getElementById('pTier').value;
+  const start=document.getElementById('pStart').value;
+  const end=document.getElementById('pEnd').value;
+  const minBal=parseFloat(document.getElementById('pMinBal').value)||0;
+  const whitelist=document.getElementById('pWhitelist').value.split('\n').map(w=>w.trim()).filter(Boolean);
+  if(!title||!start||!end) return showAlert('createAlert','Fill all required fields','err');
+  const cnames=document.querySelectorAll('.cn');
+  const cdescs=document.querySelectorAll('.cd');
+  const candidates=[];
+  cnames.forEach((inp,i)=>{if(inp.value.trim())candidates.push({id:'c'+i+'_'+Math.random().toString(36).slice(2,6),name:inp.value.trim(),description:cdescs[i]?.value.trim()||''});});
+  if(candidates.length<2) return showAlert('createAlert','Add at least 2 candidates','err');
+  try{
+    const r=await fetch(API+'/org/polls',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey},
+      body:JSON.stringify({title,description:desc,type,tier,candidates,startTime:new Date(start).toISOString(),endTime:new Date(end).toISOString(),minTokenBalance:minBal,whitelistedWallets:whitelist})});
+    const d=await r.json();
+    if(d.error) return showAlert('createAlert',d.error,'err');
+    showAlert('createAlert','Poll created! ID: '+d.poll.id,'ok');
+    loadPolls();
+  }catch(e){showAlert('createAlert','Error: '+e.message,'err');}
+}
+
+async function registerVoter(){
+  document.getElementById('voterAlert').innerHTML='';
+  const wallet=document.getElementById('vAddr').value.trim();
+  const tier=document.getElementById('vTier').value;
+  if(!wallet) return showAlert('voterAlert','Enter wallet address','err');
+  try{
+    const r=await fetch(API+'/org/voters/register',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey},
+      body:JSON.stringify({wallet,tier})});
+    const d=await r.json();
+    if(d.error) return showAlert('voterAlert',d.error,'err');
+    showAlert('voterAlert','Voter registered!','ok');
+    document.getElementById('vAddr').value='';
+  }catch(e){showAlert('voterAlert','Error: '+e.message,'err');}
+}
+
+function showAlert(id,msg,t){document.getElementById(id).innerHTML='<div class="a'+t+'">'+msg+'</div>';}
+function logout(){apiKey='';orgData=null;document.getElementById('loginSection').style.display='block';document.getElementById('dashSection').style.display='none';}
+</script>
+</body>
+</html>

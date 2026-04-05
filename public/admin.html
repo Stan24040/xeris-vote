@@ -111,6 +111,7 @@ select.finput option{background:#0d1117;}
       <div class="tab active" onclick="showTab('polls',this)">📋 All Polls</div>
       <div class="tab" onclick="showTab('create',this)">➕ Create Poll</div>
       <div class="tab" onclick="showTab('voters',this)">👤 Register Voter</div>
+      <div class="tab" onclick="showTab('orgs',this)">🏢 Organisations</div>
     </div>
 
     <!-- Polls List -->
@@ -198,6 +199,11 @@ select.finput option{background:#0d1117;}
           <button class="btn btn-outline" onclick="resetForm()">Reset</button>
         </div>
       </div>
+    </div>
+
+    <!-- Organisations -->
+    <div id="tab-orgs" style="display:none;">
+      <div id="orgsList"><div style="color:var(--muted);text-align:center;padding:40px;">Loading organisations...</div></div>
     </div>
 
     <!-- Register Voter -->
@@ -306,10 +312,50 @@ async function viewResults(id) {
 function showTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  ['polls','create','voters'].forEach(t => {
+  ['polls','create','voters','orgs'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
   });
+  if(tab==='orgs') loadOrgs();
 }
+
+async function loadOrgs(){
+  try{
+    const r=await fetch(API+'/admin/orgs',{headers:{'x-api-key':adminKey}});
+    const orgs=await r.json();
+    const sc={approved:'s-active',pending:'s-pending',suspended:'s-ended'};
+    document.getElementById('orgsList').innerHTML = orgs.length ? orgs.map(o=>`
+      <div class="poll-row">
+        <div class="poll-info">
+          <div class="poll-title-sm">${o.name}</div>
+          <div class="poll-meta">
+            <span class="sbadge ${sc[o.status]||'s-pending'}">${o.status.toUpperCase()}</span>
+            <span>${o.email}</span>
+            <span>${o.plan.toUpperCase()}</span>
+            <span>${o.pollCount} polls</span>
+          </div>
+        </div>
+        <div class="poll-actions">
+          ${o.status==='pending'?`<button class="btn btn-sm btn-success" onclick="approveOrg('${o.id}')">✅ Approve</button>`:''}
+          ${o.status==='approved'?`<button class="btn btn-sm btn-danger" onclick="suspendOrg('${o.id}')">🚫 Suspend</button>`:''}
+          ${o.status==='approved'?`<button class="btn btn-sm btn-outline" onclick="showApiKey('${o.apiKey}')">🔑 API Key</button>`:''}
+        </div>
+      </div>`).join('') : '<div style="color:var(--muted);text-align:center;padding:40px;">No organisations yet</div>';
+  }catch(e){}
+}
+
+async function approveOrg(id){
+  const r=await fetch(API+'/admin/orgs/'+id+'/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminKey})});
+  const d=await r.json();
+  if(d.success){ alert('Approved! API Key: '+d.apiKey); loadOrgs(); }
+}
+
+async function suspendOrg(id){
+  if(!confirm('Suspend this organisation?')) return;
+  await fetch(API+'/admin/orgs/'+id+'/suspend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminKey})});
+  loadOrgs();
+}
+
+function showApiKey(key){ alert('API Key: '+key); }
 
 function tierChanged() {
   const tier = document.getElementById('pTier').value;
